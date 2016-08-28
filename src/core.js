@@ -140,10 +140,10 @@ c3_chart_internal_fn.initParams = function () {
     $$.focusedTargetIds = [];
     $$.defocusedTargetIds = [];
 
-    $$.xOrient = config.axis_rotated ? "left" : "bottom";
+    $$.xOrient = config.axis_rotated ? "left" : config.axis_x_orient === "top" ? "top" : "bottom";
     $$.yOrient = config.axis_rotated ? (config.axis_y_inner ? "top" : "bottom") : (config.axis_y_inner ? "right" : "left");
     $$.y2Orient = config.axis_rotated ? (config.axis_y2_inner ? "bottom" : "top") : (config.axis_y2_inner ? "left" : "right");
-    $$.subXOrient = config.axis_rotated ? "left" : "bottom";
+    $$.subXOrient = config.axis_rotated ? "left" : config.axis_x_orient ? config.axis_x_orient : "bottom";
 
     $$.isLegendRight = config.legend_position === 'right';
     $$.isLegendInset = config.legend_position === 'inset';
@@ -378,12 +378,12 @@ c3_chart_internal_fn.updateSizes = function () {
         bottom: $$.getHorizontalAxisHeight('y') + legendHeightForBottom + $$.getCurrentPaddingBottom(),
         left: subchartHeight + (hasArc ? 0 : $$.getCurrentPaddingLeft())
     } : {
-        top: 4 + $$.getCurrentPaddingTop(), // for top tick text
+        top: 4 + $$.getCurrentPaddingTop() + config.axis_x_orient === 'top' ? $$.getHorizontalAxisHeight('x') : 0, // for top tick text
         right: hasArc ? 0 : $$.getCurrentPaddingRight(),
         bottom: xAxisHeight + subchartHeight + legendHeightForBottom + $$.getCurrentPaddingBottom(),
         left: hasArc ? 0 : $$.getCurrentPaddingLeft()
     };
-
+ 
     // for subchart
     $$.margin2 = config.axis_rotated ? {
         top: $$.margin.top,
@@ -764,7 +764,7 @@ c3_chart_internal_fn.getTranslate = function (target) {
         y = $$.margin3.top;
     } else if (target === 'x') {
         x = 0;
-        y = config.axis_rotated ? 0 : $$.height;
+        y = config.axis_rotated ? 0 : config.axis_x_orient === 'top' ? 1 : $$.height;
     } else if (target === 'y') {
         x = 0;
         y = config.axis_rotated ? $$.height : 0;
