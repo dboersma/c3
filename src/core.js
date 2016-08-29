@@ -378,12 +378,12 @@ c3_chart_internal_fn.updateSizes = function () {
         bottom: $$.getHorizontalAxisHeight('y') + legendHeightForBottom + $$.getCurrentPaddingBottom(),
         left: subchartHeight + (hasArc ? 0 : $$.getCurrentPaddingLeft())
     } : {
-        top: 4 + $$.getCurrentPaddingTop() + config.axis_x_orient === 'top' ? $$.getHorizontalAxisHeight('x') : 0, // for top tick text
+        top: 4 + $$.getCurrentPaddingTop() + (config.axis_x_orient === 'top' ? $$.getHorizontalAxisHeight('x') : 0), // for top tick text
         right: hasArc ? 0 : $$.getCurrentPaddingRight(),
         bottom: xAxisHeight + subchartHeight + legendHeightForBottom + $$.getCurrentPaddingBottom(),
         left: hasArc ? 0 : $$.getCurrentPaddingLeft()
     };
- 
+
     // for subchart
     $$.margin2 = config.axis_rotated ? {
         top: $$.margin.top,
