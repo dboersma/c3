@@ -42,9 +42,9 @@ describe('c3 chart arc', function () {
         });
 
         it('should have correct d', function () {
-            expect(d3.select('.c3-arc-data1').attr('d')).toMatch(/M-124\..+,-171\..+A211\..+,211\..+ 0 0,1 -3\..+,-211\..+L0,0Z/);
-            expect(d3.select('.c3-arc-data2').attr('d')).toMatch(/M1\..+,-211\..+A211\..+,211\..+ 0 0,1 1\..+,211\..+L0,0Z/);
-            expect(d3.select('.c3-arc-data3').attr('d')).toMatch(/M1\..+,211\..+A211\..+,211\..+ 0 0,1 -124\..+,-171\..+L0,0Z/);
+            expect(d3.select('.c3-arc-data1').attr('d')).toMatch(/M-125\..+,-172\..+A213\..+,213\..+ 0 0,1 -3\..+,-213\..+L0,0Z/);
+            expect(d3.select('.c3-arc-data2').attr('d')).toMatch(/M1\..+,-213\..+A213\..+,213\..+ 0 0,1 1\..+,213\..+L0,0Z/);
+            expect(d3.select('.c3-arc-data3').attr('d')).toMatch(/M1\..+,213\..+A213\..+,213\..+ 0 0,1 -125\..+,-172\..+L0,0Z/);
         });
 
         it('should set args with data id that can be converted to a color', function () {
@@ -58,7 +58,7 @@ describe('c3 chart arc', function () {
 
         it('should have correct d even if data id can be converted to a color', function (done) {
             setTimeout(function () {
-                expect(d3.select('.c3-arc-black').attr('d')).toMatch(/M-124\..+,-171\..+A211\..+,211\..+ 0 0,1 -3\..+,-211\..+L0,0Z/);
+                expect(d3.select('.c3-arc-black').attr('d')).toMatch(/M-125\..+,-172\..+A213\..+,213\..+ 0 0,1 -3\..+,-213\..+L0,0Z/);
                 done();
             }, 500);
         });
@@ -152,7 +152,7 @@ describe('c3 chart arc', function () {
                     .select('path.c3-shape.c3-shape.c3-arc.c3-arc-data');
 
             // This test has bee updated to make tests pass. @TODO double-check this test is accurate.
-            expect(data.attr('d')).toMatch(/M-221.*?,-2\..+A221.*?,221.*? 0 1,1 -68.*?,210.*?L-65.*?,201.*?A211.*?,211.*? 0 1,0 -211.*?,-2.*?Z/);
+            expect(data.attr('d')).toMatch(/M-223.*?,-2\..+A223.*?,223.*? 0 1,1 -68.*?,212.*?L-65.*?,202.*?A213.*?,213.*? 0 1,0 -213.*?,-2.*?Z/);
         });
     });
 

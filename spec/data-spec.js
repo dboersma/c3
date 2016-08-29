@@ -23,7 +23,7 @@ describe('c3 chart data', function () {
 
         it('should draw correctly', function () {
             var expectedCx = [6, 299, 593],
-                expectedCy = [371, 391, 332];
+                expectedCy = [374, 394, 335];
             d3.selectAll('.c3-circles-data1 .c3-circle').each(function (d, i) {
                 var circle = d3.select(this);
                 expect(+circle.attr('cx')).toBeCloseTo(expectedCx[i], 0);
@@ -62,7 +62,7 @@ describe('c3 chart data', function () {
 
         it('should draw correctly', function () {
             var expectedCx = {443: [98, 294, 490], 995: [98, 294, 490]},
-                expectedCy = {443: [194, 351, 36], 995: [391, 430, 351]};
+                expectedCy = {443: [196, 355, 37], 995: [394, 434, 355]};
             d3.selectAll('.c3-circles-443 .c3-circle').each(function (d, i) {
                 var circle = d3.select(this);
                 expect(+circle.attr('cx')).toBeCloseTo(expectedCx[443][i], 0);
@@ -118,12 +118,12 @@ describe('c3 chart data', function () {
         it('should draw nested JSON correctly', function () {
             var expectedCx = [98, 294, 490],
                 expectedCy = {
-                    443: [181, 326, 36],
-                    995: [362, 398, 326],
-                    112: [354, 347, 340],
-                    223: [391, 383, 376],
-                    334: [376, 398, 362],
-                    556: [326, 253, 181]
+                    443: [183, 329, 37],
+                    995: [365, 402, 329],
+                    112: [358, 350, 343],
+                    223: [394, 387, 380],
+                    334: [380, 402, 365],
+                    556: [329, 256, 183]
                 };
 
             d3.selectAll('.c3-circles-443 .c3-circle').each(function (d, i) {
