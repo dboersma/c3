@@ -35,7 +35,7 @@ describe('c3 chart tooltip', function () {
                 var tooltipContainer = d3.select('.c3-tooltip-container'),
                     top = Math.floor(+tooltipContainer.style('top').replace(/px/, '')),
                     left = Math.floor(+tooltipContainer.style('left').replace(/px/, '')),
-                    topExpected = 119,
+                    topExpected = 115,
                     leftExpected = 280;
                 expect(top).toBe(topExpected);
                 expect(left).toBeGreaterThan(leftExpected);
@@ -57,7 +57,7 @@ describe('c3 chart tooltip', function () {
                 var tooltipContainer = d3.select('.c3-tooltip-container'),
                     top = Math.floor(+tooltipContainer.style('top').replace(/px/, '')),
                     left = Math.floor(+tooltipContainer.style('left').replace(/px/, '')),
-                    topExpected = 119,
+                    topExpected = 115,
                     leftExpected = 280;
                 expect(top).toBe(topExpected);
                 expect(left).toBeGreaterThan(leftExpected);
