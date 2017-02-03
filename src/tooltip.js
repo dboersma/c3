@@ -67,12 +67,46 @@ c3_chart_internal_fn.getTooltipContent = function (d, defaultTitleFormat, defaul
             bgcolor = $$.levelColor ? $$.levelColor(d[i].value) : color(d[i].id);
 
             text += "<tr class='" + $$.CLASS.tooltipName + "-" + $$.getTargetSelectorSuffix(d[i].id) + "'>";
-            text += "<td class='name'><span style='background-color:" + bgcolor + "'></span>" + name + "</td>";
+            text += "<td class='name'>" + $$.getTooltipTile(d[i], bgcolor) + name + "</td>";
             text += "<td class='value'>" + value + "</td>";
             text += "</tr>";
         }
     }
     return text + "</table>";
+};
+c3_chart_internal_fn.getTooltipTile = function (d, bgcolor) {
+
+    var $$ = this;
+    var config = $$.config;
+
+    var html = "";
+    if(!config.data_symbols) {
+        html = "<span style='background-color:" + bgcolor + "'></span>";
+    } else {
+        html = html + '<svg height="12px" width="15px">';
+
+        var r = 5;
+        var x = 5;
+        var y = 7.5;
+
+        var symbol = $$.getSymbolForTarget(d);
+
+        if(symbol === 'circle') {
+            html = html + '<circle r="' + r + '" cx="' + x + '" cy="' + y + '" style="fill:' + bgcolor + '; opacity: 1;"></circle>';
+        } else {
+            var points = $$.buildPointsArray(symbol, x, y, r);
+
+            var pointsString = points.map(function(d) {
+                return [d.x,d.y].join(",");
+            }).join(" ");
+
+            html = html + '<polygon points="' + pointsString + '" style="fill:' + bgcolor + '; opacity: 1;"></polygon>';
+        }
+
+        html = html + '</svg>';
+    }
+
+    return html;
 };
 c3_chart_internal_fn.tooltipPosition = function (dataToShow, tWidth, tHeight, element) {
     var $$ = this, config = $$.config, d3 = $$.d3;

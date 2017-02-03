@@ -9,6 +9,190 @@ describe('c3 chart shape line', function () {
 
     var parseSvgPath = window.parseSvgPath;
 
+    describe('custom symbol rendering for line chart', function () {
+        it('should update args', function() {
+            args = {
+                data: {
+                    columns: [
+                        ['data1', 30, 200, 100, 400, -150, 250],
+                        ['data2', 50, 20, 10, 40, 15, 25],
+                        ['data3', -150, 120, 110, 140, 115, 125],
+                        ['data4', 30, 200, 100, 400, -150, 250],
+                        ['data5', 50, 20, 10, 40, 15, 25],
+                        ['data6', -150, 120, 110, 140, 115, 125],
+                        ['data7', 30, 200, 100, 400, -150, 250],
+                        ['data8', 50, 20, 10, 40, 15, 25],
+                        ['data9', -150, 120, 110, 140, 115, 125],
+                        ['data10', 30, 200, 100, 400, -150, 250],
+                        ['data11', 50, 20, 10, 40, 15, 25]
+                    ],
+                    type: 'line',
+                    symbols: {
+                        'data1' : 'circle',
+                        'data2': 'triangle',
+                        'data3' : 'square',
+                        'data4': 'x',
+                        'data5' : 'diamond',
+                        'data6': 'cross',
+                        'data7' : 'bar',
+                        'data8': 'vertical-bar',
+                        'data9' : 'triangle-down',
+                        'data10': 'triangle-left',
+                        'data11' : 'triangle-right'
+                    }
+                }
+            };
+
+            expect(true).toBeTruthy();
+        });
+
+        it('should render circles', function() {
+            var target = chart.internal.main.select('.c3-circles-data1');
+
+            var point = target.select('.c3-circle-0');
+
+            expect(point.attr('r')).toBe('2.5');
+        });
+
+        it('should render triangles', function() {
+            var target = chart.internal.main.select('.c3-circles-data2');
+
+            var point = target.select('.c3-circle-0');
+
+            var points = point.attr('points').split(' ');
+
+            expect(points.length).toBe(3);
+        });
+
+        it('should render squares', function() {
+            var target = chart.internal.main.select('.c3-circles-data3');
+
+            var point = target.select('.c3-circle-0');
+
+            var points = point.attr('points').split(' ');
+
+            expect(points.length).toBe(4);
+        });
+
+        it('should render xs', function() {
+            var target = chart.internal.main.select('.c3-circles-data4');
+
+            var point = target.select('.c3-circle-0');
+
+            var points = point.attr('points').split(' ');
+
+            expect(points.length).toBe(12);
+        });
+
+        it('should render diamonds', function() {
+            var target = chart.internal.main.select('.c3-circles-data5');
+
+            var point = target.select('.c3-circle-0');
+
+            var points = point.attr('points').split(' ');
+
+            expect(points.length).toBe(4);
+        });
+
+        it('should render crosses', function() {
+            var target = chart.internal.main.select('.c3-circles-data6');
+
+            var point = target.select('.c3-circle-0');
+
+            var points = point.attr('points').split(' ');
+
+            expect(points.length).toBe(12);
+        });
+
+        it('should render bars', function() {
+            var target = chart.internal.main.select('.c3-circles-data7');
+
+            var point = target.select('.c3-circle-0');
+
+            var points = point.attr('points').split(' ');
+
+            expect(points.length).toBe(4);
+        });
+
+        it('should render vertical bars', function() {
+            var target = chart.internal.main.select('.c3-circles-data8');
+
+            var point = target.select('.c3-circle-0');
+
+            var points = point.attr('points').split(' ');
+
+            expect(points.length).toBe(4);
+        });
+
+        it('should render downward triangles', function() {
+            var target = chart.internal.main.select('.c3-circles-data9');
+
+            var point = target.select('.c3-circle-0');
+
+            var points = point.attr('points').split(' ');
+
+            expect(points.length).toBe(3);
+        });
+
+        it('should render left triangles', function() {
+            var target = chart.internal.main.select('.c3-circles-data10');
+
+            var point = target.select('.c3-circle-0');
+
+            var points = point.attr('points').split(' ');
+
+            expect(points.length).toBe(3);
+        });
+
+        it('should render right triangles', function() {
+            var target = chart.internal.main.select('.c3-circles-data11');
+
+            var point = target.select('.c3-circle-0');
+
+            var points = point.attr('points').split(' ');
+
+            expect(points.length).toBe(3);
+        });
+
+        it('should expand/unexpand circles', function() {
+            var target = chart.internal.main.select('.c3-circles-data1');
+
+            var point = target.select('.c3-circle-0');
+
+            expect(point.attr('r')).toBe('2.5');
+
+            chart.internal.expandCircles(0, 'data1');
+
+            expect(point.attr('r')).toBe('4.375');
+
+            chart.internal.unexpandCircles(0);
+
+            expect(point.attr('r')).toBe('2.5');
+        });
+
+        it('should expand/unexpand polygons', function() {
+            var target = chart.internal.main.select('.c3-circles-data3');
+
+            var point = target.select('.c3-circle-0');
+
+            var points = point.attr('points');
+
+            expect(points.split(' ').length).toBe(4);
+
+            chart.internal.expandCircles(0, 'data3');
+
+            points = point.attr('points');
+
+            expect(points.split(' ').length).toBe(4);
+
+            chart.internal.unexpandCircles(0);
+
+            points = point.attr('points');
+
+            expect(points.split(' ').length).toBe(4);
+        });
+    });
+
     describe('shape-rendering for line chart', function () {
 
         it('should update args', function () {

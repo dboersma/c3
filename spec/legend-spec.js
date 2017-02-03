@@ -241,7 +241,7 @@ describe('c3 chart legend', function () {
         it('renders the legend item with the correct width and height', function () {
             d3.selectAll('.c3-legend-item-tile').each(function () {
                 expect(d3.select(this).style('stroke-width')).toBe(args.legend.item.tile.height + 'px');
-                var tileWidth = d3.select(this).attr('x2') - d3.select(this).attr('x1'); 
+                var tileWidth = d3.select(this).attr('x2') - d3.select(this).attr('x1');
                 expect(tileWidth).toBe(args.legend.item.tile.width);
             });
         });
@@ -267,7 +267,7 @@ describe('c3 chart legend', function () {
             d3.selectAll('.c3-legend-item-padded1 .c3-legend-item-tile, .c3-legend-item-padded2 .c3-legend-item-tile').each(function (el, index) {
                 var itemWidth = d3.select(this).node().parentNode.getBBox().width,
                     textBoxWidth = d3.select(d3.select(this).node().parentNode).select('text').node().getBBox().width,
-                    tileWidth = 15, // default value is 10, plus 5 more for padding 
+                    tileWidth = 15, // default value is 10, plus 5 more for padding
                     expectedWidth = textBoxWidth + tileWidth + (index ? 0 : 10) + args.legend.padding;
 
                 expect(itemWidth).toBe(expectedWidth);
@@ -275,4 +275,55 @@ describe('c3 chart legend', function () {
         });
     });
 
+    describe('custom symbols in legend', function() {
+        it('should update args', function() {
+            args = {
+                data: {
+                    columns: [
+                        ['data1', 30, 200, 100, 400, -150, 250],
+                        ['data2', 50, 20, 10, 40, 15, 25],
+                        ['data3', -150, 120, 110, 140, 115, 125],
+                        ['data4', 30, 200, 100, 400, -150, 250],
+                        ['data5', 50, 20, 10, 40, 15, 25],
+                        ['data6', -150, 120, 110, 140, 115, 125],
+                        ['data7', 30, 200, 100, 400, -150, 250],
+                        ['data8', 50, 20, 10, 40, 15, 25],
+                        ['data9', -150, 120, 110, 140, 115, 125],
+                        ['data10', 30, 200, 100, 400, -150, 250],
+                        ['data11', 50, 20, 10, 40, 15, 25]
+                    ],
+                    type: 'line',
+                    symbols: {
+                        'data1' : 'circle',
+                        'data2': 'triangle',
+                        'data3' : 'square',
+                        'data4': 'x',
+                        'data5' : 'diamond',
+                        'data6': 'cross',
+                        'data7' : 'bar',
+                        'data8': 'vertical-bar',
+                        'data9' : 'triangle-down',
+                        'data10': 'triangle-left',
+                        'data11' : 'triangle-right'
+                    }
+                }
+            };
+
+            expect(true).toBeTruthy();
+        });
+
+        it('should render custom symbols in the legend', function() {
+            expect(chart.internal.legend.selectAll('.c3-legend-item-data1 circle')[0].length).toBe(1);
+            expect(chart.internal.legend.selectAll('.c3-legend-item-data2 polygon')[0].length).toBe(1);
+            expect(chart.internal.legend.selectAll('.c3-legend-item-data3 polygon')[0].length).toBe(1);
+            expect(chart.internal.legend.selectAll('.c3-legend-item-data4 polygon')[0].length).toBe(1);
+            expect(chart.internal.legend.selectAll('.c3-legend-item-data5 polygon')[0].length).toBe(1);
+            expect(chart.internal.legend.selectAll('.c3-legend-item-data6 polygon')[0].length).toBe(1);
+            expect(chart.internal.legend.selectAll('.c3-legend-item-data7 polygon')[0].length).toBe(1);
+            expect(chart.internal.legend.selectAll('.c3-legend-item-data8 polygon')[0].length).toBe(1);
+            expect(chart.internal.legend.selectAll('.c3-legend-item-data9 polygon')[0].length).toBe(1);
+            expect(chart.internal.legend.selectAll('.c3-legend-item-data10 polygon')[0].length).toBe(1);
+            expect(chart.internal.legend.selectAll('.c3-legend-item-data11 polygon')[0].length).toBe(1);
+        });
+    });
 });

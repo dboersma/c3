@@ -1111,6 +1111,7 @@
             data_regions: {},
             data_color: undefined,
             data_colors: {},
+            data_symbols: undefined,
             data_hide: false,
             data_filter: undefined,
             data_selection_enabled: false,
@@ -1188,7 +1189,7 @@
             axis_y_label: {},
             axis_y_tick_format: undefined,
             axis_y_tick_outer: true,
-            axis_y_tick_values: null,        
+            axis_y_tick_values: null,
             axis_y_tick_rotate: 0,
             axis_y_tick_count: undefined,
             axis_y_tick_time_value: undefined,
@@ -2875,6 +2876,8 @@
         }
         else if (that.nodeName === 'path') {
             isWithin = shape.classed(CLASS.bar) ? $$.isWithinBar(that) : true;
+        } else if (that.nodeName === 'polygon') {
+            isWithin = $$.isWithinPolygon(that);
         }
         return isWithin;
     };
@@ -2884,6 +2887,29 @@
         var $$ = this,
             interpolation = $$.isInterpolationType($$.config.spline_interpolation_type) ? $$.config.spline_interpolation_type : 'cardinal';
         return $$.isSplineType(d) ? interpolation : $$.isStepType(d) ? $$.config.line_step_type : "linear";
+    };
+
+    c3_chart_internal_fn.getSymbolForTarget = function(d) {
+        var $$ = this;
+        var config = $$.config;
+
+        var symbols = config.data_symbols;
+
+        var id = d.id || (d.data && d.data.id) || d;
+
+        var symbol;
+
+        if(!symbols) {
+            symbol = 'circle';
+        } else if(symbols[id] instanceof Function) {
+            symbol = symbols[id](d);
+        } else if(symbols[id]) {
+            symbol = symbols[id];
+        } else {
+            symbol = 'circle';
+        }
+
+        return symbol;
     };
 
     c3_chart_internal_fn.initLine = function () {
@@ -3190,28 +3216,66 @@
 
     c3_chart_internal_fn.updateCircle = function () {
         var $$ = this;
-        $$.mainCircle = $$.main.selectAll('.' + CLASS.circles).selectAll('.' + CLASS.circle)
-            .data($$.lineOrScatterData.bind($$));
-        $$.mainCircle.enter().append("circle")
-            .attr("class", $$.classCircle.bind($$))
-            .attr("r", $$.pointR.bind($$))
-            .style("fill", $$.color);
-        $$.mainCircle
-            .style("opacity", $$.initialOpacityForCircle.bind($$));
-        $$.mainCircle.exit().remove();
+
+        $$.mainCircles = {};
+
+        var targets = $$.data.targets;
+
+        for(var i = 0; i < targets.length; i++) {
+            var target = targets[i];
+            var targetCircle = $$.main.selectAll('.' + CLASS.circles + $$.getTargetSelectorSuffix(target.id))
+                .selectAll('.' + CLASS.circle).data($$.lineOrScatterData(target));
+
+            if($$.getSymbolForTarget(target) === 'circle') {
+                targetCircle.enter().append("circle")
+                    .attr("class", $$.classCircle.bind($$))
+                    .attr("r", $$.pointR.bind($$))
+                    .style("fill", $$.color);
+                targetCircle
+                    .style("opacity", $$.initialOpacityForCircle.bind($$));
+                targetCircle.exit().remove();
+            } else {
+                targetCircle.enter().append("polygon")
+                    .attr("class", $$.classCircle.bind($$));
+                targetCircle
+                    .style("opacity", $$.initialOpacityForCircle.bind($$));
+                targetCircle.exit().remove();
+            }
+
+            $$.mainCircles[target.id] = targetCircle;
+        }
     };
+
     c3_chart_internal_fn.redrawCircle = function (cx, cy, withTransition) {
         var selectedCircles = this.main.selectAll('.' + CLASS.selectedCircle);
-        return [
-            (withTransition ? this.mainCircle.transition(Math.random().toString()) : this.mainCircle)
-                .style('opacity', this.opacityForCircle.bind(this))
-                .style("fill", this.color)
-                .attr("cx", cx)
-                .attr("cy", cy),
-            (withTransition ? selectedCircles.transition(Math.random().toString()) : selectedCircles)
-                .attr("cx", cx)
-                .attr("cy", cy)
-        ];
+
+        var transitions = [];
+
+        var targets = this.data.targets;
+
+        for (var i = 0; i < targets.length; i++) {
+            var target = targets[i];
+            var mainCircle = (withTransition ? this.mainCircles[target.id].transition(Math.random().toString()) : this.mainCircles[target.id]);
+
+            if(this.getSymbolForTarget(target) === 'circle') {
+                mainCircle.style('opacity', this.opacityForCircle.bind(this))
+                    .style("fill", this.color)
+                    .attr("cx", cx)
+                    .attr("cy", cy);
+            } else {
+                mainCircle.style('opacity', this.opacityForCircle.bind(this))
+                    .style("fill", this.color)
+                    .attr("points", this.buildPointsForPolygon.bind(this));
+            }
+
+            transitions.push(mainCircle);
+        }
+
+        transitions.push((withTransition ? selectedCircles.transition(Math.random().toString()) : selectedCircles)
+            .attr("cx", cx)
+            .attr("cy", cy));
+
+        return transitions;
     };
     c3_chart_internal_fn.circleX = function (d) {
         return d.x || d.x === 0 ? this.x(d.x) : null;
@@ -3236,19 +3300,63 @@
     };
     c3_chart_internal_fn.expandCircles = function (i, id, reset) {
         var $$ = this,
-            r = $$.pointExpandedR.bind($$);
+            r = $$.pointExpandedR.bind($$), symbol;
         if (reset) { $$.unexpandCircles(); }
-        $$.getCircles(i, id)
-            .classed(CLASS.EXPANDED, true)
-            .attr('r', r);
+
+        if(id) {
+            symbol = $$.getSymbolForTarget(id);
+            if(symbol === 'circle') {
+                $$.getCircles(i, id)
+                    .classed(CLASS.EXPANDED, true)
+                    .attr('r', r);
+            } else {
+                $$.getCircles(i, id)
+                    .classed(CLASS.EXPANDED, true)
+                    .attr('points', $$.buildExpandedPointsForPolygon.bind($$));
+            }
+        } else {
+            var targets = $$.data.targets;
+
+            for (var j = 0; j < targets.length; j++) {
+                var target = targets[j];
+
+                symbol = $$.getSymbolForTarget(target.id);
+                if(symbol === 'circle') {
+                    $$.getCircles(i, id)
+                        .classed(CLASS.EXPANDED, true)
+                        .attr('r', r);
+                } else {
+                    $$.getCircles(i, id)
+                        .classed(CLASS.EXPANDED, true)
+                        .attr('points', $$.buildExpandedPointsForPolygon.bind($$));
+                }
+            }
+        }
     };
     c3_chart_internal_fn.unexpandCircles = function (i) {
         var $$ = this,
             r = $$.pointR.bind($$);
-        $$.getCircles(i)
-            .filter(function () { return $$.d3.select(this).classed(CLASS.EXPANDED); })
-            .classed(CLASS.EXPANDED, false)
-            .attr('r', r);
+        var targets = $$.data.targets;
+
+        for (var j = 0; j < targets.length; j++) {
+            var target = targets[j];
+            var symbol = $$.getSymbolForTarget(target.id);
+            if(symbol === 'circle') {
+                $$.getCircles(i, target.id)
+                    .filter(function () {
+                        return $$.d3.select(this).classed(CLASS.EXPANDED);
+                    })
+                    .classed(CLASS.EXPANDED, false)
+                    .attr('r', r);
+            } else {
+                $$.getCircles(i, target.id)
+                    .filter(function () {
+                        return $$.d3.select(this).classed(CLASS.EXPANDED);
+                    })
+                    .classed(CLASS.EXPANDED, false)
+                    .attr('points', $$.buildPointsForPolygon.bind($$));
+            }
+        }
     };
     c3_chart_internal_fn.pointR = function (d) {
         var $$ = this, config = $$.config;
@@ -3268,8 +3376,123 @@
             cx = +d3_this.attr("cx"), cy = +d3_this.attr("cy");
         return Math.sqrt(Math.pow(cx - mouse[0], 2) + Math.pow(cy - mouse[1], 2)) < r;
     };
+    c3_chart_internal_fn.isWithinPolygon = function (that) {
+        var d3 = this.d3;
+        var rectangle = that.getBBox();
+
+        var mouse = d3.mouse(that);
+
+        return (mouse[0] - rectangle.x) < rectangle.width && (mouse[1] - rectangle.y) < rectangle.height;
+    };
     c3_chart_internal_fn.isWithinStep = function (that, y) {
         return Math.abs(y - this.d3.mouse(that)[1]) < 30;
+    };
+    c3_chart_internal_fn.buildPointsForPolygon = function(d) {
+        var $$ = this;
+        var symbol = $$.getSymbolForTarget(d);
+
+        var cx = ($$.config.axis_rotated ? $$.circleY(d) : $$.circleX(d));
+        var cy = ($$.config.axis_rotated ? $$.circleX(d) : $$.circleY(d));
+        var r = $$.pointR(d);
+
+        var points = $$.buildPointsArray(symbol, cx, cy, r);
+
+        return points.map(function(d) {
+            return [d.x,d.y].join(",");
+        }).join(" ");
+    };
+
+    c3_chart_internal_fn.buildExpandedPointsForPolygon = function(d) {
+        var $$ = this;
+        var symbol = $$.getSymbolForTarget(d);
+
+        var cx = ($$.config.axis_rotated ? $$.circleY(d) : $$.circleX(d));
+        var cy = ($$.config.axis_rotated ? $$.circleX(d) : $$.circleY(d));
+        var r = $$.pointExpandedR(d);
+
+        var points = $$.buildPointsArray(symbol, cx, cy, r);
+
+        return points.map(function(d) {
+            return [d.x,d.y].join(",");
+        }).join(" ");
+    };
+
+    c3_chart_internal_fn.buildPointsArray = function(symbol, cx, cy, r) {
+        var points = [];
+
+        switch(symbol) {
+            case 'triangle':
+                points = [{x: cx, y: cy - r}, {x: cx - r, y: cy + r}, {x: cx + r, y: cy + r}];
+                break;
+
+            case 'square':
+                points = [{x: cx - r, y: cy - r}, {x: cx + r, y: cy - r}, {x: cx + r, y: cy + r}, {x: cx - r, y: cy + r}];
+                break;
+
+            case 'x':
+                points = [{x: cx - (r/2), y: cy - r}, {x: cx, y: cy - (r/2)}, {x: cx + (r/2), y: cy - r},
+                          {x: cx + r, y: cy - (r/2)}, {x: cx + (r/2), y: cy}, {x: cx + r, y: cy + (r/2)},
+                          {x: cx + (r/2), y: cy + r}, {x: cx, y: cy + (r/2)}, {x: cx - (r/2), y: cy + r},
+                          {x: cx - r, y: cy + (r/2)}, {x: cx - (r/2), y: cy}, {x: cx - r, y: cy - (r/2)}];
+                break;
+
+            case 'diamond':
+                points = [{x: cx - r, y: cy - r}, {x: cx + r, y: cy - r}, {x: cx + r, y: cy + r}, {x: cx - r, y: cy + r}];
+                points = this.rotatePoints(cx, cy, points, 45);
+
+                break;
+
+            case 'cross':
+                points = [{x: cx - (r/2), y: cy - r}, {x: cx, y: cy - (r/2)}, {x: cx + (r/2), y: cy - r},
+                    {x: cx + r, y: cy - (r/2)}, {x: cx + (r/2), y: cy}, {x: cx + r, y: cy + (r/2)},
+                    {x: cx + (r/2), y: cy + r}, {x: cx, y: cy + (r/2)}, {x: cx - (r/2), y: cy + r},
+                    {x: cx - r, y: cy + (r/2)}, {x: cx - (r/2), y: cy}, {x: cx - r, y: cy - (r/2)}];
+
+                points = this.rotatePoints(cx, cy, points, 45);
+                break;
+
+            case 'bar':
+                points = [{x: cx - r, y: cy - (r/2)}, {x: cx + r, y: cy - (r/2)}, {x: cx + r, y: cy + (r/2)},
+                          {x: cx - r, y: cy + (r/2)}];
+                break;
+
+            case 'vertical-bar':
+                points = [{x: cx + (r/2), y: cy - r}, {x: cx + (r/2), y: cy + r}, {x: cx - (r/2), y: cy + r},
+                          {x: cx - (r/2), y: cy - r}];
+                break;
+
+            case 'triangle-down':
+                points = [{x: cx - r, y: cy - r}, {x: cx + r, y: cy - r}, {x: cx, y: cy + r}];
+                break;
+
+            case 'triangle-right':
+                points = [{x: cx - r, y: cy - r}, {x: cx + r, y: cy}, {x: cx - r, y: cy + r}];
+                break;
+
+            case 'triangle-left':
+                points = [{x: cx + r, y: cy - r}, {x: cx + r, y: cy + r}, {x: cx - r, y: cy}];
+                break;
+        }
+
+        return points;
+    };
+
+    c3_chart_internal_fn.rotatePoints = function (cx, cy, points, angleInDegrees) {
+        var angleInRadians = angleInDegrees * Math.PI / 180;
+
+        var newPointsArray = [];
+
+        for(var i = 0; i < points.length; i++) {
+            var point = points[i];
+            var newPoint = {};
+
+            newPoint.x = cx + ((point.x - cx) * Math.cos(angleInRadians)) - ((point.y - cy) * Math.sin(angleInRadians));
+            newPoint.y = cy + ((point.x - cx) * Math.sin(angleInRadians)) + ((point.y - cy) * Math.cos(angleInRadians));
+
+            newPointsArray.push(newPoint);
+        }
+
+        return newPointsArray;
     };
 
     c3_chart_internal_fn.initBar = function () {
@@ -3925,12 +4148,46 @@
                 bgcolor = $$.levelColor ? $$.levelColor(d[i].value) : color(d[i].id);
 
                 text += "<tr class='" + $$.CLASS.tooltipName + "-" + $$.getTargetSelectorSuffix(d[i].id) + "'>";
-                text += "<td class='name'><span style='background-color:" + bgcolor + "'></span>" + name + "</td>";
+                text += "<td class='name'>" + $$.getTooltipTile(d[i], bgcolor) + name + "</td>";
                 text += "<td class='value'>" + value + "</td>";
                 text += "</tr>";
             }
         }
         return text + "</table>";
+    };
+    c3_chart_internal_fn.getTooltipTile = function (d, bgcolor) {
+
+        var $$ = this;
+        var config = $$.config;
+
+        var html = "";
+        if(!config.data_symbols) {
+            html = "<span style='background-color:" + bgcolor + "'></span>";
+        } else {
+            html = html + '<svg height="12px" width="15px">';
+
+            var r = 5;
+            var x = 5;
+            var y = 7.5;
+
+            var symbol = $$.getSymbolForTarget(d);
+
+            if(symbol === 'circle') {
+                html = html + '<circle r="' + r + '" cx="' + x + '" cy="' + y + '" style="fill:' + bgcolor + '; opacity: 1;"></circle>';
+            } else {
+                var points = $$.buildPointsArray(symbol, x, y, r);
+
+                var pointsString = points.map(function(d) {
+                    return [d.x,d.y].join(",");
+                }).join(" ");
+
+                html = html + '<polygon points="' + pointsString + '" style="fill:' + bgcolor + '; opacity: 1;"></polygon>';
+            }
+
+            html = html + '</svg>';
+        }
+
+        return html;
     };
     c3_chart_internal_fn.tooltipPosition = function (dataToShow, tWidth, tHeight, element) {
         var $$ = this, config = $$.config, d3 = $$.d3;
@@ -4113,6 +4370,7 @@
         var l, totalLength = 0, offsets = {}, widths = {}, heights = {}, margins = [0], steps = {}, step = 0;
         var withTransition, withTransitionForTransform;
         var texts, rects, tiles, background;
+        var targetId, symbol;
 
         // Skip elements when their name is set to null
         targetIds = targetIds.filter(function(id) {
@@ -4254,26 +4512,58 @@
                     $$.api.revert();
                 }
             });
+
         l.append('text')
             .text(function (id) { return isDefined(config.data_names[id]) ? config.data_names[id] : id; })
             .each(function (id, i) { updatePositions(this, id, i); })
-            .style("pointer-events", "none")
-            .attr('x', $$.isLegendRight || $$.isLegendInset ? xForLegendText : -200)
-            .attr('y', $$.isLegendRight || $$.isLegendInset ? -200 : yForLegendText);
+            .style("pointer-events", "none");
         l.append('rect')
             .attr("class", CLASS.legendItemEvent)
-            .style('fill-opacity', 0)
-            .attr('x', $$.isLegendRight || $$.isLegendInset ? xForLegendRect : -200)
-            .attr('y', $$.isLegendRight || $$.isLegendInset ? -200 : yForLegendRect);
-        l.append('line')
-            .attr('class', CLASS.legendItemTile)
-            .style('stroke', $$.color)
-            .style("pointer-events", "none")
-            .attr('x1', $$.isLegendRight || $$.isLegendInset ? x1ForLegendTile : -200)
-            .attr('y1', $$.isLegendRight || $$.isLegendInset ? -200 : yForLegendTile)
-            .attr('x2', $$.isLegendRight || $$.isLegendInset ? x2ForLegendTile : -200)
-            .attr('y2', $$.isLegendRight || $$.isLegendInset ? -200 : yForLegendTile)
-            .attr('stroke-width', config.legend_item_tile_height);
+            .style('fill-opacity', 0);
+
+        var r = config.legend_item_tile_height / 2;
+
+        for (var j = 0; j < targetIds.length; j++) {
+            targetId = targetIds[j];
+            var legendItem = $$.legend.selectAll('.' + CLASS.legendItem + $$.getTargetSelectorSuffix(targetId)).selectAll('.' + CLASS.legendItemTile).data([targetId]);
+            var legendItemLine = $$.legend.selectAll('.' + CLASS.legendItem + $$.getTargetSelectorSuffix(targetId)).selectAll('.' + CLASS.legendItemTile + '-line').data([targetId]);
+
+            var enterTarget = legendItem.enter();
+
+
+            if(!config.data_symbols) {
+                enterTarget.append('line')
+                    .attr('class', CLASS.legendItemTile)
+                    .style('stroke', $$.color)
+                    .style("pointer-events", "none")
+                    .attr('stroke-width', config.legend_item_tile_height);
+
+            } else {
+                symbol = $$.getSymbolForTarget(targetId);
+
+                if(symbol === 'circle') {
+                    enterTarget.append('circle')
+                        .attr('class', CLASS.legendItemTile)
+                        .attr('r', r)
+                        .style('fill', $$.color)
+                        .style('pointer-events', 'none');
+                } else {
+                    enterTarget.append('polygon')
+                        .attr('class', CLASS.legendItemTile)
+                        .style('fill', $$.color)
+                        .style('pointer-events', 'none');
+
+                }
+            }
+
+            legendItemLine.enter().append('line')
+                .attr('class', CLASS.legendItemTile + '-line')
+                .style('stroke', $$.color)
+                .style("pointer-events", "none");
+
+            legendItemLine.exit().remove();
+            legendItem.exit().remove();
+        }
 
         // Set background for inset legend
         background = $$.legend.select('.' + CLASS.legendBackground + ' rect');
@@ -4299,7 +4589,8 @@
             .attr('x', xForLegendRect)
             .attr('y', yForLegendRect);
 
-        tiles = $$.legend.selectAll('line.' + CLASS.legendItemTile)
+        if(!config.data_symbols) {
+            tiles = $$.legend.selectAll('line.' + CLASS.legendItemTile)
                 .data(targetIds);
             (withTransition ? tiles.transition() : tiles)
                 .style('stroke', $$.color)
@@ -4307,6 +4598,45 @@
                 .attr('y1', yForLegendTile)
                 .attr('x2', x2ForLegendTile)
                 .attr('y2', yForLegendTile);
+        } else {
+            for(var k = 0; k < targetIds.length; k++) {
+                targetId = targetIds[k];
+                symbol = $$.getSymbolForTarget(targetId);
+
+                var x1 = x1ForLegendTile(targetId, k);
+                var x2 = x2ForLegendTile(targetId, k);
+                var y = yForLegendTile(targetId, k);
+
+                var cx = (x1 + x2) / 2;
+
+                var tile;
+
+                if(symbol === 'circle') {
+                    tile = $$.legend.selectAll('.' + CLASS.legendItem + $$.getTargetSelectorSuffix(targetId) + ' circle.' + CLASS.legendItemTile);
+                    (withTransition ? tile.transition() : tile)
+                        .attr('cx', cx)
+                        .attr('cy', y);
+                } else {
+                    var points = $$.buildPointsArray(symbol, cx, y, r);
+
+                    var pointsString = points.map(function(d) {
+                        return [d.x,d.y].join(",");
+                    }).join(" ");
+
+                    tile = $$.legend.selectAll('.' + CLASS.legendItem + $$.getTargetSelectorSuffix(targetId) + ' polygon.' + CLASS.legendItemTile);
+                    (withTransition ? tile.transition() : tile)
+                        .attr('points', pointsString);
+                }
+
+                var line = $$.legend.selectAll('.' + CLASS.legendItem + $$.getTargetSelectorSuffix(targetId) + ' line.' + CLASS.legendItemTile + '-line');
+                (withTransition ? line.transition() : line)
+                    .attr('x1', x1 - 5)
+                    .attr('x2', x2 + 5)
+                    .attr('y1', y)
+                    .attr('y2', y);
+
+            }
+        }
 
         if (background) {
             (withTransition ? background.transition() : background)
@@ -5464,7 +5794,7 @@
     };
     c3_chart_internal_fn.getToggle = function (that, d) {
         var $$ = this, toggle;
-        if (that.nodeName === 'circle') {
+        if (that.nodeName === 'circle' || that.nodeName === 'polygon') {
             if ($$.isStepType(d)) {
                 // circle is hidden in step chart, so treat as within the click area
                 toggle = function () {}; // TODO: how to select step chart?

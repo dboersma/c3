@@ -70,6 +70,8 @@ c3_chart_internal_fn.isWithinShape = function (that, d) {
     }
     else if (that.nodeName === 'path') {
         isWithin = shape.classed(CLASS.bar) ? $$.isWithinBar(that) : true;
+    } else if (that.nodeName === 'polygon') {
+        isWithin = $$.isWithinPolygon(that);
     }
     return isWithin;
 };
@@ -79,4 +81,27 @@ c3_chart_internal_fn.getInterpolate = function (d) {
     var $$ = this,
         interpolation = $$.isInterpolationType($$.config.spline_interpolation_type) ? $$.config.spline_interpolation_type : 'cardinal';
     return $$.isSplineType(d) ? interpolation : $$.isStepType(d) ? $$.config.line_step_type : "linear";
+};
+
+c3_chart_internal_fn.getSymbolForTarget = function(d) {
+    var $$ = this;
+    var config = $$.config;
+
+    var symbols = config.data_symbols;
+
+    var id = d.id || (d.data && d.data.id) || d;
+
+    var symbol;
+
+    if(!symbols) {
+        symbol = 'circle';
+    } else if(symbols[id] instanceof Function) {
+        symbol = symbols[id](d);
+    } else if(symbols[id]) {
+        symbol = symbols[id];
+    } else {
+        symbol = 'circle';
+    }
+
+    return symbol;
 };

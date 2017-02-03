@@ -302,28 +302,66 @@ c3_chart_internal_fn.generateGetAreaPoints = function (areaIndices, isSub) { // 
 
 c3_chart_internal_fn.updateCircle = function () {
     var $$ = this;
-    $$.mainCircle = $$.main.selectAll('.' + CLASS.circles).selectAll('.' + CLASS.circle)
-        .data($$.lineOrScatterData.bind($$));
-    $$.mainCircle.enter().append("circle")
-        .attr("class", $$.classCircle.bind($$))
-        .attr("r", $$.pointR.bind($$))
-        .style("fill", $$.color);
-    $$.mainCircle
-        .style("opacity", $$.initialOpacityForCircle.bind($$));
-    $$.mainCircle.exit().remove();
+
+    $$.mainCircles = {};
+
+    var targets = $$.data.targets;
+
+    for(var i = 0; i < targets.length; i++) {
+        var target = targets[i];
+        var targetCircle = $$.main.selectAll('.' + CLASS.circles + $$.getTargetSelectorSuffix(target.id))
+            .selectAll('.' + CLASS.circle).data($$.lineOrScatterData(target));
+
+        if($$.getSymbolForTarget(target) === 'circle') {
+            targetCircle.enter().append("circle")
+                .attr("class", $$.classCircle.bind($$))
+                .attr("r", $$.pointR.bind($$))
+                .style("fill", $$.color);
+            targetCircle
+                .style("opacity", $$.initialOpacityForCircle.bind($$));
+            targetCircle.exit().remove();
+        } else {
+            targetCircle.enter().append("polygon")
+                .attr("class", $$.classCircle.bind($$));
+            targetCircle
+                .style("opacity", $$.initialOpacityForCircle.bind($$));
+            targetCircle.exit().remove();
+        }
+
+        $$.mainCircles[target.id] = targetCircle;
+    }
 };
+
 c3_chart_internal_fn.redrawCircle = function (cx, cy, withTransition) {
     var selectedCircles = this.main.selectAll('.' + CLASS.selectedCircle);
-    return [
-        (withTransition ? this.mainCircle.transition(Math.random().toString()) : this.mainCircle)
-            .style('opacity', this.opacityForCircle.bind(this))
-            .style("fill", this.color)
-            .attr("cx", cx)
-            .attr("cy", cy),
-        (withTransition ? selectedCircles.transition(Math.random().toString()) : selectedCircles)
-            .attr("cx", cx)
-            .attr("cy", cy)
-    ];
+
+    var transitions = [];
+
+    var targets = this.data.targets;
+
+    for (var i = 0; i < targets.length; i++) {
+        var target = targets[i];
+        var mainCircle = (withTransition ? this.mainCircles[target.id].transition(Math.random().toString()) : this.mainCircles[target.id]);
+
+        if(this.getSymbolForTarget(target) === 'circle') {
+            mainCircle.style('opacity', this.opacityForCircle.bind(this))
+                .style("fill", this.color)
+                .attr("cx", cx)
+                .attr("cy", cy);
+        } else {
+            mainCircle.style('opacity', this.opacityForCircle.bind(this))
+                .style("fill", this.color)
+                .attr("points", this.buildPointsForPolygon.bind(this));
+        }
+
+        transitions.push(mainCircle);
+    }
+
+    transitions.push((withTransition ? selectedCircles.transition(Math.random().toString()) : selectedCircles)
+        .attr("cx", cx)
+        .attr("cy", cy));
+
+    return transitions;
 };
 c3_chart_internal_fn.circleX = function (d) {
     return d.x || d.x === 0 ? this.x(d.x) : null;
@@ -348,19 +386,63 @@ c3_chart_internal_fn.getCircles = function (i, id) {
 };
 c3_chart_internal_fn.expandCircles = function (i, id, reset) {
     var $$ = this,
-        r = $$.pointExpandedR.bind($$);
+        r = $$.pointExpandedR.bind($$), symbol;
     if (reset) { $$.unexpandCircles(); }
-    $$.getCircles(i, id)
-        .classed(CLASS.EXPANDED, true)
-        .attr('r', r);
+
+    if(id) {
+        symbol = $$.getSymbolForTarget(id);
+        if(symbol === 'circle') {
+            $$.getCircles(i, id)
+                .classed(CLASS.EXPANDED, true)
+                .attr('r', r);
+        } else {
+            $$.getCircles(i, id)
+                .classed(CLASS.EXPANDED, true)
+                .attr('points', $$.buildExpandedPointsForPolygon.bind($$));
+        }
+    } else {
+        var targets = $$.data.targets;
+
+        for (var j = 0; j < targets.length; j++) {
+            var target = targets[j];
+
+            symbol = $$.getSymbolForTarget(target.id);
+            if(symbol === 'circle') {
+                $$.getCircles(i, id)
+                    .classed(CLASS.EXPANDED, true)
+                    .attr('r', r);
+            } else {
+                $$.getCircles(i, id)
+                    .classed(CLASS.EXPANDED, true)
+                    .attr('points', $$.buildExpandedPointsForPolygon.bind($$));
+            }
+        }
+    }
 };
 c3_chart_internal_fn.unexpandCircles = function (i) {
     var $$ = this,
         r = $$.pointR.bind($$);
-    $$.getCircles(i)
-        .filter(function () { return $$.d3.select(this).classed(CLASS.EXPANDED); })
-        .classed(CLASS.EXPANDED, false)
-        .attr('r', r);
+    var targets = $$.data.targets;
+
+    for (var j = 0; j < targets.length; j++) {
+        var target = targets[j];
+        var symbol = $$.getSymbolForTarget(target.id);
+        if(symbol === 'circle') {
+            $$.getCircles(i, target.id)
+                .filter(function () {
+                    return $$.d3.select(this).classed(CLASS.EXPANDED);
+                })
+                .classed(CLASS.EXPANDED, false)
+                .attr('r', r);
+        } else {
+            $$.getCircles(i, target.id)
+                .filter(function () {
+                    return $$.d3.select(this).classed(CLASS.EXPANDED);
+                })
+                .classed(CLASS.EXPANDED, false)
+                .attr('points', $$.buildPointsForPolygon.bind($$));
+        }
+    }
 };
 c3_chart_internal_fn.pointR = function (d) {
     var $$ = this, config = $$.config;
@@ -380,6 +462,121 @@ c3_chart_internal_fn.isWithinCircle = function (that, r) {
         cx = +d3_this.attr("cx"), cy = +d3_this.attr("cy");
     return Math.sqrt(Math.pow(cx - mouse[0], 2) + Math.pow(cy - mouse[1], 2)) < r;
 };
+c3_chart_internal_fn.isWithinPolygon = function (that) {
+    var d3 = this.d3;
+    var rectangle = that.getBBox();
+
+    var mouse = d3.mouse(that);
+
+    return (mouse[0] - rectangle.x) < rectangle.width && (mouse[1] - rectangle.y) < rectangle.height;
+};
 c3_chart_internal_fn.isWithinStep = function (that, y) {
     return Math.abs(y - this.d3.mouse(that)[1]) < 30;
+};
+c3_chart_internal_fn.buildPointsForPolygon = function(d) {
+    var $$ = this;
+    var symbol = $$.getSymbolForTarget(d);
+
+    var cx = ($$.config.axis_rotated ? $$.circleY(d) : $$.circleX(d));
+    var cy = ($$.config.axis_rotated ? $$.circleX(d) : $$.circleY(d));
+    var r = $$.pointR(d);
+
+    var points = $$.buildPointsArray(symbol, cx, cy, r);
+
+    return points.map(function(d) {
+        return [d.x,d.y].join(",");
+    }).join(" ");
+};
+
+c3_chart_internal_fn.buildExpandedPointsForPolygon = function(d) {
+    var $$ = this;
+    var symbol = $$.getSymbolForTarget(d);
+
+    var cx = ($$.config.axis_rotated ? $$.circleY(d) : $$.circleX(d));
+    var cy = ($$.config.axis_rotated ? $$.circleX(d) : $$.circleY(d));
+    var r = $$.pointExpandedR(d);
+
+    var points = $$.buildPointsArray(symbol, cx, cy, r);
+
+    return points.map(function(d) {
+        return [d.x,d.y].join(",");
+    }).join(" ");
+};
+
+c3_chart_internal_fn.buildPointsArray = function(symbol, cx, cy, r) {
+    var points = [];
+
+    switch(symbol) {
+        case 'triangle':
+            points = [{x: cx, y: cy - r}, {x: cx - r, y: cy + r}, {x: cx + r, y: cy + r}];
+            break;
+
+        case 'square':
+            points = [{x: cx - r, y: cy - r}, {x: cx + r, y: cy - r}, {x: cx + r, y: cy + r}, {x: cx - r, y: cy + r}];
+            break;
+
+        case 'x':
+            points = [{x: cx - (r/2), y: cy - r}, {x: cx, y: cy - (r/2)}, {x: cx + (r/2), y: cy - r},
+                      {x: cx + r, y: cy - (r/2)}, {x: cx + (r/2), y: cy}, {x: cx + r, y: cy + (r/2)},
+                      {x: cx + (r/2), y: cy + r}, {x: cx, y: cy + (r/2)}, {x: cx - (r/2), y: cy + r},
+                      {x: cx - r, y: cy + (r/2)}, {x: cx - (r/2), y: cy}, {x: cx - r, y: cy - (r/2)}];
+            break;
+
+        case 'diamond':
+            points = [{x: cx - r, y: cy - r}, {x: cx + r, y: cy - r}, {x: cx + r, y: cy + r}, {x: cx - r, y: cy + r}];
+            points = this.rotatePoints(cx, cy, points, 45);
+
+            break;
+
+        case 'cross':
+            points = [{x: cx - (r/2), y: cy - r}, {x: cx, y: cy - (r/2)}, {x: cx + (r/2), y: cy - r},
+                {x: cx + r, y: cy - (r/2)}, {x: cx + (r/2), y: cy}, {x: cx + r, y: cy + (r/2)},
+                {x: cx + (r/2), y: cy + r}, {x: cx, y: cy + (r/2)}, {x: cx - (r/2), y: cy + r},
+                {x: cx - r, y: cy + (r/2)}, {x: cx - (r/2), y: cy}, {x: cx - r, y: cy - (r/2)}];
+
+            points = this.rotatePoints(cx, cy, points, 45);
+            break;
+
+        case 'bar':
+            points = [{x: cx - r, y: cy - (r/2)}, {x: cx + r, y: cy - (r/2)}, {x: cx + r, y: cy + (r/2)},
+                      {x: cx - r, y: cy + (r/2)}];
+            break;
+
+        case 'vertical-bar':
+            points = [{x: cx + (r/2), y: cy - r}, {x: cx + (r/2), y: cy + r}, {x: cx - (r/2), y: cy + r},
+                      {x: cx - (r/2), y: cy - r}];
+            break;
+
+        case 'triangle-down':
+            points = [{x: cx - r, y: cy - r}, {x: cx + r, y: cy - r}, {x: cx, y: cy + r}];
+            break;
+
+        case 'triangle-right':
+            points = [{x: cx - r, y: cy - r}, {x: cx + r, y: cy}, {x: cx - r, y: cy + r}];
+            break;
+
+        case 'triangle-left':
+            points = [{x: cx + r, y: cy - r}, {x: cx + r, y: cy + r}, {x: cx - r, y: cy}];
+            break;
+    }
+
+    return points;
+};
+
+c3_chart_internal_fn.rotatePoints = function (cx, cy, points, angleInDegrees) {
+    var angleInRadians = angleInDegrees * Math.PI / 180;
+
+    var newPointsArray = [];
+
+    for(var i = 0; i < points.length; i++) {
+        var point = points[i];
+        var newPoint = {};
+
+        newPoint.x = cx + ((point.x - cx) * Math.cos(angleInRadians)) - ((point.y - cy) * Math.sin(angleInRadians));
+        newPoint.y = cy + ((point.x - cx) * Math.sin(angleInRadians)) + ((point.y - cy) * Math.cos(angleInRadians));
+
+        newPointsArray.push(newPoint);
+    }
+
+    return newPointsArray;
 };

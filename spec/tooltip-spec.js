@@ -11,7 +11,7 @@ describe('c3 chart tooltip', function () {
                     ['data1', 30, 200, 100, 400, 150, 250],
                     ['data2', 50, 20, 10, 40, 15, 25],
                     ['data3', 150, 120, 110, 140, 115, 125]
-                ],
+                ]
             },
             tooltip: tooltipConfiguration
         };
@@ -119,4 +119,42 @@ describe('c3 chart tooltip', function () {
       }
     });
   });
+
+    describe('tooltip with custom symbols', function() {
+        it('should update args', function() {
+            args = function () {
+                return {
+                    data: {
+                        columns: [
+                            ['data1', 30, 200, 100, 400, 150, 250],
+                            ['data2', 50, 20, 10, 40, 15, 25],
+                            ['data3', 150, 120, 110, 140, 115, 125]
+                        ],
+                        type: 'line',
+                        symbols: {
+                            'data1': 'circle',
+                            'data2': 'triangle',
+                            'data3': 'square'
+                        }
+                    }
+                };
+            };
+
+            expect(true).toBeTruthy();
+        });
+
+        it('should render custom symbols in the tooltip', function() {
+            var eventRect = d3.select('.c3-event-rect-2').node();
+            window.setMouseEvent(chart, 'mousemove', 100, 100, eventRect);
+
+            var toolTipTable = d3.select('.c3-tooltip');
+
+            var tooltipCircle = toolTipTable.selectAll('circle');
+            var tooltipPolygon = toolTipTable.selectAll('polygon');
+
+            expect(tooltipCircle[0].length).toBe(1);
+
+            expect(tooltipPolygon[0].length).toBe(2);
+        });
+    });
 });

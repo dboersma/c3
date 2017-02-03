@@ -118,6 +118,7 @@ c3_chart_internal_fn.updateLegend = function (targetIds, options, transitions) {
     var l, totalLength = 0, offsets = {}, widths = {}, heights = {}, margins = [0], steps = {}, step = 0;
     var withTransition, withTransitionForTransform;
     var texts, rects, tiles, background;
+    var targetId, symbol;
 
     // Skip elements when their name is set to null
     targetIds = targetIds.filter(function(id) {
@@ -259,26 +260,58 @@ c3_chart_internal_fn.updateLegend = function (targetIds, options, transitions) {
                 $$.api.revert();
             }
         });
+
     l.append('text')
         .text(function (id) { return isDefined(config.data_names[id]) ? config.data_names[id] : id; })
         .each(function (id, i) { updatePositions(this, id, i); })
-        .style("pointer-events", "none")
-        .attr('x', $$.isLegendRight || $$.isLegendInset ? xForLegendText : -200)
-        .attr('y', $$.isLegendRight || $$.isLegendInset ? -200 : yForLegendText);
+        .style("pointer-events", "none");
     l.append('rect')
         .attr("class", CLASS.legendItemEvent)
-        .style('fill-opacity', 0)
-        .attr('x', $$.isLegendRight || $$.isLegendInset ? xForLegendRect : -200)
-        .attr('y', $$.isLegendRight || $$.isLegendInset ? -200 : yForLegendRect);
-    l.append('line')
-        .attr('class', CLASS.legendItemTile)
-        .style('stroke', $$.color)
-        .style("pointer-events", "none")
-        .attr('x1', $$.isLegendRight || $$.isLegendInset ? x1ForLegendTile : -200)
-        .attr('y1', $$.isLegendRight || $$.isLegendInset ? -200 : yForLegendTile)
-        .attr('x2', $$.isLegendRight || $$.isLegendInset ? x2ForLegendTile : -200)
-        .attr('y2', $$.isLegendRight || $$.isLegendInset ? -200 : yForLegendTile)
-        .attr('stroke-width', config.legend_item_tile_height);
+        .style('fill-opacity', 0);
+
+    var r = config.legend_item_tile_height / 2;
+
+    for (var j = 0; j < targetIds.length; j++) {
+        targetId = targetIds[j];
+        var legendItem = $$.legend.selectAll('.' + CLASS.legendItem + $$.getTargetSelectorSuffix(targetId)).selectAll('.' + CLASS.legendItemTile).data([targetId]);
+        var legendItemLine = $$.legend.selectAll('.' + CLASS.legendItem + $$.getTargetSelectorSuffix(targetId)).selectAll('.' + CLASS.legendItemTile + '-line').data([targetId]);
+
+        var enterTarget = legendItem.enter();
+
+
+        if(!config.data_symbols) {
+            enterTarget.append('line')
+                .attr('class', CLASS.legendItemTile)
+                .style('stroke', $$.color)
+                .style("pointer-events", "none")
+                .attr('stroke-width', config.legend_item_tile_height);
+
+        } else {
+            symbol = $$.getSymbolForTarget(targetId);
+
+            if(symbol === 'circle') {
+                enterTarget.append('circle')
+                    .attr('class', CLASS.legendItemTile)
+                    .attr('r', r)
+                    .style('fill', $$.color)
+                    .style('pointer-events', 'none');
+            } else {
+                enterTarget.append('polygon')
+                    .attr('class', CLASS.legendItemTile)
+                    .style('fill', $$.color)
+                    .style('pointer-events', 'none');
+
+            }
+        }
+
+        legendItemLine.enter().append('line')
+            .attr('class', CLASS.legendItemTile + '-line')
+            .style('stroke', $$.color)
+            .style("pointer-events", "none");
+
+        legendItemLine.exit().remove();
+        legendItem.exit().remove();
+    }
 
     // Set background for inset legend
     background = $$.legend.select('.' + CLASS.legendBackground + ' rect');
@@ -304,7 +337,8 @@ c3_chart_internal_fn.updateLegend = function (targetIds, options, transitions) {
         .attr('x', xForLegendRect)
         .attr('y', yForLegendRect);
 
-    tiles = $$.legend.selectAll('line.' + CLASS.legendItemTile)
+    if(!config.data_symbols) {
+        tiles = $$.legend.selectAll('line.' + CLASS.legendItemTile)
             .data(targetIds);
         (withTransition ? tiles.transition() : tiles)
             .style('stroke', $$.color)
@@ -312,6 +346,45 @@ c3_chart_internal_fn.updateLegend = function (targetIds, options, transitions) {
             .attr('y1', yForLegendTile)
             .attr('x2', x2ForLegendTile)
             .attr('y2', yForLegendTile);
+    } else {
+        for(var k = 0; k < targetIds.length; k++) {
+            targetId = targetIds[k];
+            symbol = $$.getSymbolForTarget(targetId);
+
+            var x1 = x1ForLegendTile(targetId, k);
+            var x2 = x2ForLegendTile(targetId, k);
+            var y = yForLegendTile(targetId, k);
+
+            var cx = (x1 + x2) / 2;
+
+            var tile;
+
+            if(symbol === 'circle') {
+                tile = $$.legend.selectAll('.' + CLASS.legendItem + $$.getTargetSelectorSuffix(targetId) + ' circle.' + CLASS.legendItemTile);
+                (withTransition ? tile.transition() : tile)
+                    .attr('cx', cx)
+                    .attr('cy', y);
+            } else {
+                var points = $$.buildPointsArray(symbol, cx, y, r);
+
+                var pointsString = points.map(function(d) {
+                    return [d.x,d.y].join(",");
+                }).join(" ");
+
+                tile = $$.legend.selectAll('.' + CLASS.legendItem + $$.getTargetSelectorSuffix(targetId) + ' polygon.' + CLASS.legendItemTile);
+                (withTransition ? tile.transition() : tile)
+                    .attr('points', pointsString);
+            }
+
+            var line = $$.legend.selectAll('.' + CLASS.legendItem + $$.getTargetSelectorSuffix(targetId) + ' line.' + CLASS.legendItemTile + '-line');
+            (withTransition ? line.transition() : line)
+                .attr('x1', x1 - 5)
+                .attr('x2', x2 + 5)
+                .attr('y1', y)
+                .attr('y2', y);
+
+        }
+    }
 
     if (background) {
         (withTransition ? background.transition() : background)

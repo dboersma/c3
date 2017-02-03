@@ -48,7 +48,7 @@ c3_chart_internal_fn.togglePath = function (selected, target, d, i) {
 };
 c3_chart_internal_fn.getToggle = function (that, d) {
     var $$ = this, toggle;
-    if (that.nodeName === 'circle') {
+    if (that.nodeName === 'circle' || that.nodeName === 'polygon') {
         if ($$.isStepType(d)) {
             // circle is hidden in step chart, so treat as within the click area
             toggle = function () {}; // TODO: how to select step chart?
